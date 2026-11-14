@@ -447,10 +447,10 @@ function wsOrgDrawRoot(plugin: WordSmith, a: { at: string; cols: WsOrgCol[]; ctx
 			if (col.id === 'goal' || col.id === 'deadline') {
 				const self: WsOrgRow = { path: at || '', parent: '', kind: 'folder', group: '', depth: 0, rel: '', idx: -1 };
 				// (its own first; the count only while the vault has none, a click still setting it)
-				const say = agg ? agg.text : (many ? many.text : '');
+				const say = agg ? agg.text : (col.id === 'goal' ? '' : many ? many.text : '');
 				if (col.id === 'goal') ctx.orgGoalCell(td, self, say, agg && agg.goal ? agg.goal : null);
 				else ctx.orgDeadlineCell(td, self, say, agg && agg.title ? agg.title : '');
-				if (!agg && many) td.title = col.id === 'goal' ? wsT('Click to set a target') : wsT('Click to set a deadline');
+				if (!agg && many && col.id === 'deadline') td.title = wsT('Click to set a deadline');
 				continue;
 			}
 			// THE FOLDER THE WINDOW IS OPENED ON COUNTS ITS VOCABULARY TOO (the writer: "sometimes the vocabulary for the

@@ -2218,6 +2218,7 @@ export class WordSmithSettingTab extends PluginSettingTab {
 				// #73 (Maja-Nune): where the three panes open; for Export and History too, so never hidden with the Organizer
 				{ name: 'Open in', desc: 'Where the Organizer, Export and History open.', control: { type: 'dropdown', key: 'paneOpenIn', options: { split: 'A split to the right', tab: 'A new tab' } } },
 				{ name: 'Target column shows', desc: 'Words and target, or a percentage.', control: { type: 'dropdown', key: 'orgTargetShow', options: { ratio: 'Words and target (2,145/5,000)', percent: 'Percentage (43%)' } }, visible: org },
+				{ name: 'Folder targets sum child targets', desc: 'Calculate each folder target from the targets on its descendant notes.', control: { type: 'toggle', key: 'orgFolderTargetSum' }, visible: org },
 				// A731: the deadline's two halves, one column
 				{ name: 'Deadline column shows', desc: 'The date and the working days left, or one of them. Both are on hover.', control: { type: 'dropdown', key: 'orgDeadlineCell', options: { both: 'Both (8d left \u00b7 20 Oct 2026)', days: 'Days left (8d left)', date: 'The date (20 Oct 2026)' } }, visible: org },
 				{ name: 'Organizer folder icons', desc: 'A glyph beside each folder name in the window.', control: { type: 'toggle', key: 'orgFolderIcons' }, visible: org },
@@ -2918,6 +2919,7 @@ const AFTER: Record<string, (tab: WordSmithSettingTab, value: unknown) => void |
 		tab.plugin.revChanged();
 		tab.update();
 	},
+	orgFolderTargetSum: (tab) => { if (typeof tab.plugin._orgDraw === 'function') tab.plugin._orgDraw(); },
 	settingsMirror: (tab) => { tab.update(); },   // the file row's text follows
 };
 
@@ -2925,6 +2927,6 @@ const AFTER: Record<string, (tab: WordSmithSettingTab, value: unknown) => void |
 const SAVE_NOW = new Set<string>([
 	'pluginEnabled', 'scopeMode', 'zenEnabled', 'zenHideBar', 'enableLetterbox', 'enableRetroStatus', 'retroBarOnPhone',
 	'statusBarBorderTop', 'statusBarBorderBottom', 'powerlineModeColors', 'vimFollowCursorSmith', 'posEnabled', 'checksEnabled',
-	'checkFillerSoft', 'checkDialogueMore', 'hemingwayEnabled', 'typographyEnabled', 'orgTargetShow', 'orgDeadlineCell', 'orgFolderIcons',
+	'checkFillerSoft', 'checkDialogueMore', 'hemingwayEnabled', 'typographyEnabled', 'orgTargetShow', 'orgFolderTargetSum', 'orgDeadlineCell', 'orgFolderIcons',
 	'layoutZenOnly', 'pageView', 'hideOwnFolder', 'revisionsOn',
 ]);

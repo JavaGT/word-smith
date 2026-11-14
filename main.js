@@ -26,7 +26,7 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var C, COUNT, SET, top, StyleModule, adoptedSet, StyleSet;
 var init_style_mod = __esm({
-  "../node_modules/style-mod/src/style-mod.js"() {
+  "node_modules/style-mod/src/style-mod.js"() {
     C = "ͼ";
     COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
     SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : /* @__PURE__ */ Symbol("styleSet");
@@ -99,15 +99,18 @@ var init_style_mod = __esm({
       mount(modules, root) {
         let sheet = this.sheet;
         let pos = 0, j = 0;
+        let changed = false;
         for (let i = 0; i < modules.length; i++) {
           let mod = modules[i], index = this.modules.indexOf(mod);
           if (index < j && index > -1) {
             this.modules.splice(index, 1);
+            changed = true;
             j--;
             index = -1;
           }
           if (index == -1) {
             this.modules.splice(j++, 0, mod);
+            changed = true;
             if (sheet)
               for (let k = 0; k < mod.rules.length; k++)
                 sheet.insertRule(mod.rules[k], pos++);
@@ -122,10 +125,12 @@ var init_style_mod = __esm({
           if (root.adoptedStyleSheets.indexOf(this.sheet) < 0)
             root.adoptedStyleSheets = [this.sheet, ...root.adoptedStyleSheets];
         } else {
-          let text = "";
-          for (let i = 0; i < this.modules.length; i++)
-            text += this.modules[i].getRules() + "\n";
-          this.styleTag.textContent = text;
+          if (changed) {
+            let text = "";
+            for (let i = 0; i < this.modules.length; i++)
+              text += this.modules[i].getRules() + "\n";
+            this.styleTag.textContent = text;
+          }
           let target = root.head || root;
           if (this.styleTag.parentNode != target)
             target.insertBefore(this.styleTag, target.firstChild);
@@ -1018,7 +1023,7 @@ function overrideChunkInline(state, chunk, builder, gutterBuilder) {
 }
 var import_view2, import_state2, import_language3, import_highlight, Change, scanLimit, timeout, crude, Frontier, frontier1, frontier2, wordChar, MAX_SCAN, isSurrogate1, isSurrogate2, mergeConfig, setChunks, computeChunks, ChunkField, moveByChunk, goToNextChunk, goToPreviousChunk, Chunk, updateMargin, defaultDiffConfig, decorateChunks, changeGutter, changedLine, changedText, inserted, deleted, changedLineGutterMarker, Spacer, adjustSpacers, Spacers, epsilon, uncollapseUnchanged, CollapseWidget, CollapsedRanges, externalTheme, baseTheme, collapseCompartment, configCompartment, MergeView, deletedChunkGutterMarker, unifiedChangeGutter, updateOriginalDoc, originalDoc, DeletionWidgets, DeletionWidget, deletedChunks, InlineChunkCache, InlineDeletion, inlineChangedLineGutterMarker, inlineChangedLine;
 var init_dist = __esm({
-  "../node_modules/@codemirror/merge/dist/index.js"() {
+  "node_modules/@codemirror/merge/dist/index.js"() {
     import_view2 = require("@codemirror/view");
     import_state2 = require("@codemirror/state");
     init_style_mod();
@@ -9985,6 +9990,7 @@ var DEFAULT_SETTINGS = {
   menuRuleStyles: {},
   menuDock: true,
   orgTargetShow: "percent",
+  orgFolderTargetSum: false,
   orgDeadlineCell: "both",
   paneOpenIn: "split",
   fileIconsOffOnce: false,
@@ -15618,6 +15624,7 @@ var WordSmithSettingTab = class _WordSmithSettingTab extends import_obsidian3.Pl
         { name: "Organizer", desc: "Off, the window is hidden and its file is never written.", control: { type: "toggle", key: "organizerOn", defaultValue: true } },
         { name: "Open in", desc: "Where the Organizer, Export and History open.", control: { type: "dropdown", key: "paneOpenIn", options: { split: "A split to the right", tab: "A new tab" } } },
         { name: "Target column shows", desc: "Words and target, or a percentage.", control: { type: "dropdown", key: "orgTargetShow", options: { ratio: "Words and target (2,145/5,000)", percent: "Percentage (43%)" } }, visible: org },
+        { name: "Folder targets sum child targets", desc: "Calculate each folder target from the targets on its descendant notes.", control: { type: "toggle", key: "orgFolderTargetSum" }, visible: org },
         { name: "Deadline column shows", desc: "The date and the working days left, or one of them. Both are on hover.", control: { type: "dropdown", key: "orgDeadlineCell", options: { both: "Both (8d left · 20 Oct 2026)", days: "Days left (8d left)", date: "The date (20 Oct 2026)" } }, visible: org },
         { name: "Organizer folder icons", desc: "A glyph beside each folder name in the window.", control: { type: "toggle", key: "orgFolderIcons" }, visible: org },
         {
@@ -16504,6 +16511,10 @@ var AFTER = {
     tab.plugin.revChanged();
     tab.update();
   },
+  orgFolderTargetSum: (tab) => {
+    if (typeof tab.plugin._orgDraw === "function")
+      tab.plugin._orgDraw();
+  },
   settingsMirror: (tab) => {
     tab.update();
   }
@@ -16527,6 +16538,7 @@ var SAVE_NOW = /* @__PURE__ */ new Set([
   "hemingwayEnabled",
   "typographyEnabled",
   "orgTargetShow",
+  "orgFolderTargetSum",
   "orgDeadlineCell",
   "orgFolderIcons",
   "layoutZenOnly",
@@ -26096,13 +26108,13 @@ function wsOrgDrawRoot(plugin, a) {
       const many = isRoot ? null : wsOrgTotalSay(plugin, ctx, col.id, subUnder);
       if (col.id === "goal" || col.id === "deadline") {
         const self = { path: at || "", parent: "", kind: "folder", group: "", depth: 0, rel: "", idx: -1 };
-        const say = agg ? agg.text : many ? many.text : "";
+        const say = agg ? agg.text : col.id === "goal" ? "" : many ? many.text : "";
         if (col.id === "goal")
           ctx.orgGoalCell(td, self, say, agg && agg.goal ? agg.goal : null);
         else
           ctx.orgDeadlineCell(td, self, say, agg && agg.title ? agg.title : "");
-        if (!agg && many)
-          td.title = col.id === "goal" ? wsT("Click to set a target") : wsT("Click to set a deadline");
+        if (!agg && many && col.id === "deadline")
+          td.title = wsT("Click to set a deadline");
         continue;
       }
       if (col.id === "vocab" && isRoot) {
@@ -26638,6 +26650,11 @@ var wsOrgCellsMake = (d) => {
         orgGoalBand(td, Number(d.orgColRaw({ id: "words" }, row.path)) || 0, Number(d.orgColRaw({ id: "goal" }, row.path)) || 0);
     } catch (_) {
       wsCatch("openManuscriptModal / orgGoalCell: orgGoalBand(td, words, target)", _);
+    }
+    if (folder && d.plugin.settings.orgFolderTargetSum) {
+      if (band && band.target > 0)
+        td.title = wsT("{count} of a target of {target}", { count: band.words.toLocaleString(), target: band.target.toLocaleString() });
+      return;
     }
     const store = folder ? "folderTargets" : d.goalStore();
     const canGoal = folder || orgCanHoldGoal(row.path);
@@ -29298,7 +29315,7 @@ var wsOrgReadingsMake = (d) => {
     let count = 0;
     for (const p2 of paths || [])
       count += Number(orgColRaw(WORDS_COL, p2)) || 0;
-    const target = d.plugin.folderTargetFor(self);
+    const target = col.id === "goal" && d.plugin.settings.orgFolderTargetSum ? (paths || []).reduce((sum, path) => sum + (Number(orgColRaw({ id: "goal" }, path)) || 0), 0) : d.plugin.folderTargetFor(self);
     if (col.id === "goal") {
       if (!(target > 0))
         return null;
