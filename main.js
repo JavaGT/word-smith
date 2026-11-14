@@ -26,7 +26,7 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var C, COUNT, SET, top, StyleModule, adoptedSet, StyleSet;
 var init_style_mod = __esm({
-  "../node_modules/style-mod/src/style-mod.js"() {
+  "node_modules/style-mod/src/style-mod.js"() {
     C = "ͼ";
     COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
     SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : /* @__PURE__ */ Symbol("styleSet");
@@ -99,15 +99,18 @@ var init_style_mod = __esm({
       mount(modules, root) {
         let sheet = this.sheet;
         let pos = 0, j = 0;
+        let changed = false;
         for (let i = 0; i < modules.length; i++) {
           let mod = modules[i], index = this.modules.indexOf(mod);
           if (index < j && index > -1) {
             this.modules.splice(index, 1);
+            changed = true;
             j--;
             index = -1;
           }
           if (index == -1) {
             this.modules.splice(j++, 0, mod);
+            changed = true;
             if (sheet)
               for (let k = 0; k < mod.rules.length; k++)
                 sheet.insertRule(mod.rules[k], pos++);
@@ -122,10 +125,12 @@ var init_style_mod = __esm({
           if (root.adoptedStyleSheets.indexOf(this.sheet) < 0)
             root.adoptedStyleSheets = [this.sheet, ...root.adoptedStyleSheets];
         } else {
-          let text = "";
-          for (let i = 0; i < this.modules.length; i++)
-            text += this.modules[i].getRules() + "\n";
-          this.styleTag.textContent = text;
+          if (changed) {
+            let text = "";
+            for (let i = 0; i < this.modules.length; i++)
+              text += this.modules[i].getRules() + "\n";
+            this.styleTag.textContent = text;
+          }
           let target = root.head || root;
           if (this.styleTag.parentNode != target)
             target.insertBefore(this.styleTag, target.firstChild);
@@ -1018,7 +1023,7 @@ function overrideChunkInline(state, chunk, builder, gutterBuilder) {
 }
 var import_view2, import_state2, import_language3, import_highlight, Change, scanLimit, timeout, crude, Frontier, frontier1, frontier2, wordChar, MAX_SCAN, isSurrogate1, isSurrogate2, mergeConfig, setChunks, computeChunks, ChunkField, moveByChunk, goToNextChunk, goToPreviousChunk, Chunk, updateMargin, defaultDiffConfig, decorateChunks, changeGutter, changedLine, changedText, inserted, deleted, changedLineGutterMarker, Spacer, adjustSpacers, Spacers, epsilon, uncollapseUnchanged, CollapseWidget, CollapsedRanges, externalTheme, baseTheme, collapseCompartment, configCompartment, MergeView, deletedChunkGutterMarker, unifiedChangeGutter, updateOriginalDoc, originalDoc, DeletionWidgets, DeletionWidget, deletedChunks, InlineChunkCache, InlineDeletion, inlineChangedLineGutterMarker, inlineChangedLine;
 var init_dist = __esm({
-  "../node_modules/@codemirror/merge/dist/index.js"() {
+  "node_modules/@codemirror/merge/dist/index.js"() {
     import_view2 = require("@codemirror/view");
     import_state2 = require("@codemirror/state");
     init_style_mod();
@@ -27413,6 +27418,7 @@ var wsOrgColsMake = (d) => {
 var import_obsidian17 = require("obsidian");
 var wsOrgDragMake = (d) => {
   let orgDragPath = null;
+  let orgDragKind = null;
   let orgDragCol = null;
   let orgLastGrouping = null;
   const orgDropMarks = () => {
@@ -27422,13 +27428,31 @@ var wsOrgDragMake = (d) => {
       el2.removeClass("ws-drop-into");
     }
   };
-  const orgDropRun = async (movedPath, ontoPath, below) => {
+  const orgDropRun = async (movedPath, ontoPath, below, movedKind) => {
     if (!movedPath || !ontoPath || movedPath === ontoPath)
       return;
-    if (d.folderOf(movedPath) !== d.folderOf(ontoPath))
+    const from = d.folderOf(movedPath);
+    const parent = d.folderOf(ontoPath);
+    if (from === parent) {
+      await d.plugin.treeOrderMove(parent, movedPath, wsOrgDropBefore(d.plugin.treeOrderCurrent(parent), movedPath, ontoPath, below));
       return;
-    const parent = d.folderOf(movedPath);
-    await d.plugin.treeOrderMove(parent, movedPath, wsOrgDropBefore(d.plugin.treeOrderCurrent(parent), movedPath, ontoPath, below));
+    }
+    if (movedKind !== "file" || !/\.md$/i.test(movedPath))
+      return;
+    const result = await d.plugin.treeMoveInto(movedPath, parent);
+    if (!result || !result.ok || !result.dest) {
+      if (result && result.said)
+        d.said(result.said, true);
+      return;
+    }
+    const moved = result.dest;
+    const before = wsOrgDropBefore(d.plugin.treeOrderCurrent(parent), moved, ontoPath, below);
+    const ordered = await d.plugin.treeOrderMove(parent, moved, before);
+    if (!ordered) {
+      d.said(wsT("Moved “{name}” into {folder}, but could not set its position.", { name: d.nameOf(moved), folder: d.nameOf(parent) }), true);
+      return;
+    }
+    d.said(parent ? wsT("Moved “{name}” into {folder}.", { name: d.nameOf(moved), folder: d.nameOf(parent) }) : wsT("Moved “{name}” into the vault root.", { name: d.nameOf(moved) }), false);
   };
   const ORG_EDGE = 0.2;
   const orgAtEdge = (el, ev) => {
@@ -27465,6 +27489,7 @@ var wsOrgDragMake = (d) => {
         orgDropMarks();
         g.removeClass("ws-drop-into");
         orgDragPath = null;
+        orgDragKind = null;
         if (!moved || d.folderOf(moved) === parentPath)
           return;
         ev.preventDefault();
@@ -27484,6 +27509,7 @@ var wsOrgDragMake = (d) => {
     tr.addClass("is-draggable");
     tr.addEventListener("dragstart", (ev) => {
       orgDragPath = row.path;
+      orgDragKind = row.kind;
       tr.addClass("is-dragging");
       try {
         if (ev.dataTransfer)
@@ -27519,7 +27545,7 @@ var wsOrgDragMake = (d) => {
       orgDropMarks();
       if (!orgDragPath || orgDragPath === row.path)
         return;
-      if (d.folderOf(orgDragPath) !== row.parent)
+      if (d.folderOf(orgDragPath) !== row.parent && !(orgDragKind === "file" && /\.md$/i.test(orgDragPath)))
         return;
       if (row.kind === "folder" && !orgAtEdge(tr, ev))
         return;
@@ -27541,15 +27567,18 @@ var wsOrgDragMake = (d) => {
         const moved = orgDragPath;
         orgDropMarks();
         orgDragPath = null;
-        if (!moved || d.folderOf(moved) !== row.parent)
+        const movedKind = orgDragKind;
+        orgDragKind = null;
+        if (!moved)
           return;
         ev.preventDefault();
         const r = tr.getBoundingClientRect();
-        await orgDropRun(moved, row.path, ev.clientY - r.top > r.height / 2);
+        await orgDropRun(moved, row.path, ev.clientY - r.top > r.height / 2, movedKind || "");
       })();
     });
     tr.addEventListener("dragend", () => {
       orgDragPath = null;
+      orgDragKind = null;
       orgDropMarks();
       tr.removeClass("is-dragging");
     });
@@ -27557,7 +27586,7 @@ var wsOrgDragMake = (d) => {
       rows: () => Array.from(d.panel.querySelectorAll(".ws-org-row[data-path]")),
       idOf: (el2) => el2.getAttribute("data-path"),
       drop: (from, to, below) => {
-        void orgDropRun(from, to, below);
+        void orgDropRun(from, to, below, row.kind);
       }
     });
   };
